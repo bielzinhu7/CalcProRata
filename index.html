@@ -1,0 +1,202 @@
+<!doctype html>
+<html lang="pt-br">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Calculadora Pró-Rata — Mudança de Vencimento</title>
+<style>
+:root{
+  --roxo:#9900ff;--roxo-ana-1:#7a00cc;--roxo-ana-2:#cc00ff;--amarelo:#ffff00;--ama-ana-1:#ffd500;--ama-ana-2:#e6ff00;
+  --bg:#0e0a15;--bg-grad:#150f22;--card:#16142a;--bd:#2a2644;--text:#f5f7fb;--muted:#a6acc2;
+  --brand:var(--roxo);--brand-hover:#8a00e6;--accent:var(--amarelo);--accent-ink:#1a1a1a;--ok:#34d399;--err:#ef4444;
+}
+*{box-sizing:border-box}
+body{margin:0;font-family:system-ui,-apple-system,Segoe UI,Roboto,Ubuntu,Arial;background:linear-gradient(180deg,var(--bg),var(--bg-grad));color:var(--text)}
+.wrap{max-width:980px;margin:0 auto;padding:22px;text-align:center}
+h1{margin:0 0 8px;font-size:28px}
+.sub{color:var(--muted);margin:0 6px 6px;font-size:16px}
+.info{color:var(--accent);font-size:14px;margin-bottom:18px}
+.next{display:inline-flex;gap:8px;align-items:center;justify-content:center;background:#1a1832;border:1px solid #2f2b4f;color:var(--text);padding:8px 12px;border-radius:999px;font-size:13px}
+.grid{display:grid;grid-template-columns:1fr 1fr;gap:16px;text-align:left}
+.card{background:var(--card);border:1px solid var(--bd);border-radius:14px;padding:16px}
+label{display:block;font-size:14px;color:var(--muted);margin-bottom:6px}
+input[type="text"],input[type="number"],select{width:100%;padding:10px 12px;border-radius:10px;border:1px solid var(--bd);background:#101029;color:var(--text);transition:border-color .2s,box-shadow .2s}
+input:focus,select:focus{outline:none;border-color:var(--roxo-ana-2);box-shadow:0 0 0 3px rgba(153,0,255,.25)}
+.row{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+.mt-12{margin-top:12px}.mt-10{margin-top:10px}
+.small{font-size:12px;color:var(--muted)}
+.radio{display:flex;gap:12px;flex-wrap:wrap;margin-top:6px}
+.btn{padding:10px 14px;border-radius:10px;border:1px solid transparent;cursor:pointer;transition:transform .06s ease,filter .15s ease,box-shadow .15s ease,background .15s ease,border-color .15s ease;user-select:none}
+.btn:active{transform:translateY(1px)}
+.btn-primary{background:linear-gradient(180deg,var(--brand),var(--roxo-ana-1));border-color:#5a38a6;color:white;box-shadow:0 6px 16px rgba(153,0,255,.25)}
+.btn-primary:hover{filter:brightness(1.03);box-shadow:0 8px 20px rgba(153,0,255,.35);background:linear-gradient(180deg,var(--brand-hover),var(--roxo-ana-1))}
+.btn-ghost{background:#1a1832;border-color:#2f2b4f;color:var(--text)}
+.btn-ghost:hover{background:#221e42;border-color:#47407a}
+summary{cursor:pointer;color:var(--accent)}
+summary:hover{text-decoration:underline;text-decoration-color:var(--ama-ana-1)}
+.kv{display:flex;justify-content:space-between;margin:6px 0}
+.ok{color:var(--ok)}.err{color:var(--err)}.muted{color:var(--muted)}
+pre{white-space:pre-wrap;line-height:1.35;margin:8px 0 0}
+@media(max-width:900px){.grid{grid-template-columns:1fr}}
+</style>
+</head>
+<body>
+  <div class="wrap">
+    <h1>Calculadora de Pró-Rata</h1>
+    <p class="sub">Mudança da <strong>data de vencimento</strong> do plano, conforme regras internas.</p>
+    <p class="info">O valor da Pró-Rata será cobrado junto à próxima mensalidade.</p>
+    <div class="next"><span>📅 Próxima cobrança:</span><strong id="nextDate">—</strong></div>
+
+    <div class="grid mt-12">
+      <div class="card">
+        <div class="row">
+          <div>
+            <label for="valor">Valor da mensalidade (R$)</label>
+            <input id="valor" type="text" inputmode="numeric" placeholder="0,00" value="0,00" autocomplete="off">
+          </div>
+          <div>
+            <label for="diaAtual">Dia de vencimento atual</label>
+            <input id="diaAtual" type="number" min="1" max="31" placeholder="Ex.: 10">
+          </div>
+        </div>
+
+        <div class="row mt-12">
+          <div>
+            <label for="diaNovo">Novo dia de vencimento</label>
+            <input id="diaNovo" type="number" min="1" max="31" placeholder="Ex.: 22">
+          </div>
+          <div>
+            <label for="parcelasAbertas">Parcelas em aberto?</label>
+            <select id="parcelasAbertas">
+              <option value="nao">Não</option>
+              <option value="sim">Sim</option>
+            </select>
+          </div>
+        </div>
+
+        <div class="mt-12">
+          <label>Aplicar mudança a partir de</label>
+          <div class="radio" id="radioGroup">
+            <label><input type="radio" name="aplicacao" value="proxima" checked> Próxima ocorrência do novo dia</label>
+            <label><input type="radio" name="aplicacao" value="mesSeguinte"> Mês seguinte (pula um ciclo)</label>
+          </div>
+          <div class="small">
+            • Adiantamento (ex.: 25 → 10) aplicado na próxima ocorrência imediata não cobra Pró-Rata.<br>
+            • Se aplicar apenas no mês subsequente, pode haver Pró-Rata.
+          </div>
+        </div>
+
+        <div class="actions">
+          <button id="calc" class="btn btn-primary">Calcular</button>
+          <button id="reset" class="btn btn-ghost">Limpar</button>
+        </div>
+      </div>
+
+      <div class="card">
+        <h2>Resultado</h2>
+        <div class="kv"><span>Status:</span><strong id="status" class="muted">—</strong></div>
+        <div class="kv"><span>Dias de diferença considerados:</span><strong id="dias">—</strong></div>
+        <div class="kv"><span>Pró-Rata devido:</span><strong id="prorata">—</strong></div>
+        <div class="kv"><span>Total ilustrativo (mensalidade + Pró-Rata):</span><strong id="total">—</strong></div>
+        <details class="mt-10">
+          <summary>Ver explicação do cálculo</summary>
+          <pre id="exp"></pre>
+        </details>
+        <p class="small muted">Arredondamento para duas casas decimais. Base: valor ÷ 30 × dias.</p>
+      </div>
+    </div>
+  </div>
+
+<script>
+const BRL=new Intl.NumberFormat("pt-BR",{style:"currency",currency:"BRL"});
+const fmt=v=>BRL.format(Math.max(0,Number(v||0)));
+const r2=v=>Math.round((Number(v)||0)*100)/100;
+
+const valorInput=document.getElementById("valor");
+valorInput.addEventListener("input",e=>{
+  let raw=e.target.value.replace(/\D/g,"");
+  if(raw==="")raw="0";
+  const num=parseFloat(raw)/100;
+  e.target.value=num.toFixed(2).replace(".",",");
+});
+valorInput.addEventListener("focus",e=>e.target.select());
+
+function clampDay(y,m,day){const last=new Date(y,m+1,0).getDate();return Math.min(day,last)}
+function formatBRDate(d){return d.toLocaleDateString("pt-BR",{timeZone:"America/Sao_Paulo"})}
+function computeNextChargeDate(diaAtual,diaNovo,mode){
+  if(!(diaAtual>=1&&diaAtual<=31)&&!(diaNovo>=1&&diaNovo<=31))return "—";
+  const now=new Date();let y=now.getFullYear();let m=now.getMonth();
+  let targetMonth;
+  if(mode==="proxima"){targetMonth=(diaNovo>diaAtual)?m:m+1}
+  else{targetMonth=(diaNovo>diaAtual)?m+1:m+2}
+  const d=new Date(y, targetMonth, clampDay(y,targetMonth,diaNovo));
+  return formatBRDate(d)
+}
+
+function calcularProrata({valor,diaAtual,diaNovo,parcelasAbertas,aplicacao}){
+  const explic=[];
+  if(parcelasAbertas==="sim"){return{permitido:false,status:"Bloqueado",dias:0,prorata:0,total:valor,explain:"Alteração não permitida: existem parcelas em aberto."};}
+  const movimento=(diaNovo>diaAtual)?"postergar":(diaNovo<diaAtual?"adiantar":"igual");
+  explic.push(`Movimento: ${movimento==="postergar"?"postergar (novo maior que atual)":movimento==="adiantar"?"adiantar (novo menor que atual)":"sem mudança de dia"}.`);
+  let diasConsiderados=0;let cobra=false;
+  if(movimento==="igual"){explic.push("Dia novo igual ao atual: diferença de 0 dia(s). Sem Pró-Rata.");}
+  else if(movimento==="postergar"){diasConsiderados=diaNovo-diaAtual;explic.push(`Diferença direta: ${diaNovo} - ${diaAtual} = ${diasConsiderados} dia(s).`);
+    if(diasConsiderados>=6){cobra=true;explic.push("Diferença ≥ 6 dias ⇒ cobrar Pró-Rata.");}
+    else{explic.push("Diferença < 6 dias ⇒ não cobrar Pró-Rata.");}}
+  else if(movimento==="adiantar"){if(aplicacao==="proxima"){explic.push("Aplicação na próxima ocorrência (mês seguinte imediato). Adiantamento ⇒ não cobrar Pró-Rata.");diasConsiderados=0;cobra=false;}
+    else{diasConsiderados=(30-diaAtual)+diaNovo;explic.push(`Aplicação no mês subsequente: dias adicionais = (30 - ${diaAtual}) + ${diaNovo} = ${diasConsiderados}.`);
+      if(diasConsiderados>=6){cobra=true;explic.push("Diferença ≥ 6 dias ⇒ cobrar Pró-Rata.");}
+      else{explic.push("Diferença < 6 dias ⇒ não cobrar Pró-Rata.");}}}
+  const prorata=cobra?r2((valor/30)*diasConsiderados):0;
+  const total=r2(valor+prorata);
+  const resumo=[`Mensalidade: ${fmt(valor)}.`,`Base: valor ÷ 30 × dias = ${fmt(valor)} ÷ 30 × ${diasConsiderados} = ${fmt((valor/30)*diasConsiderados)}.`,`Arredondamento: 2 casas decimais.`,`Pró-Rata devido: ${fmt(prorata)}.`,`Total ilustrativo (mensalidade + Pró-Rata): ${fmt(total)}.`].join("\n");
+  return{permitido:true,status:"Permitido",dias:diasConsiderados,prorata,total,explain:(explic.join("\n")+"\n\n"+resumo).trim()};
+}
+
+function getVals(){
+  const valorStr=document.getElementById("valor").value.replace(/\./g,"").replace(",",".");
+  return{valor:Number(valorStr||0),diaAtual:Number(document.getElementById("diaAtual").value||0),diaNovo:Number(document.getElementById("diaNovo").value||0),parcelasAbertas:document.getElementById("parcelasAbertas").value,aplicacao:[...document.querySelectorAll('input[name="aplicacao"]')].find(r=>r.checked)?.value||"proxima"};
+}
+function show(res){
+  const statusEl=document.getElementById("status");
+  statusEl.textContent=res.status;
+  statusEl.className=res.permitido?"ok":"err";
+  document.getElementById("dias").textContent=res.dias;
+  document.getElementById("prorata").textContent=fmt(res.prorata);
+  document.getElementById("total").textContent=fmt(res.total);
+  document.getElementById("exp").textContent=res.explain;
+}
+
+function updateNextDate(){
+  const diaAtual=Number(document.getElementById("diaAtual").value||0);
+  const diaNovo=Number(document.getElementById("diaNovo").value||0);
+  const modo=[...document.querySelectorAll('input[name="aplicacao"]')].find(r=>r.checked)?.value||"proxima";
+  document.getElementById("nextDate").textContent=computeNextChargeDate(diaAtual,diaNovo,modo);
+}
+
+["diaAtual","diaNovo"].forEach(id=>document.getElementById(id).addEventListener("input",updateNextDate));
+document.getElementById("radioGroup").addEventListener("change",updateNextDate);
+
+document.getElementById("calc").addEventListener("click",()=>{
+  const v=getVals();
+  if(v.valor<=0){alert("Informe o valor da mensalidade.");return;}
+  if(!(v.diaAtual>=1&&v.diaAtual<=31)){alert("Informe o dia atual (1 a 31).");return;}
+  if(!(v.diaNovo>=1&&v.diaNovo<=31)){alert("Informe o novo dia (1 a 31).");return;}
+  const res=calcularProrata(v);
+  show(res);
+});
+
+document.getElementById("reset").addEventListener("click",()=>{
+  document.getElementById("valor").value="0,00";
+  ["diaAtual","diaNovo"].forEach(id=>document.getElementById(id).value="");
+  document.getElementById("parcelasAbertas").value="nao";
+  document.querySelector('input[name="aplicacao"][value="proxima"]').checked=true;
+  show({permitido:false,status:"—",dias:"—",prorata:0,total:0,explain:""});
+  document.getElementById("nextDate").textContent="—";
+});
+
+show({permitido:false,status:"—",dias:"—",prorata:0,total:0,explain:""});
+updateNextDate();
+</script>
+</body>
+</html>
