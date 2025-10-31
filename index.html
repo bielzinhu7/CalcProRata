@@ -119,7 +119,6 @@ const BRL=new Intl.NumberFormat("pt-BR",{style:"currency",currency:"BRL"});
 const fmt=v=>BRL.format(Math.max(0,Number(v||0)));
 const r2=v=>Math.round((Number(v)||0)*100)/100;
 
-// ——— Entrada de valor em R$ com máscara simples
 const valorInput=document.getElementById("valor");
 valorInput.addEventListener("input",e=>{
   let raw=e.target.value.replace(/\D/g,"");
@@ -129,7 +128,6 @@ valorInput.addEventListener("input",e=>{
 });
 valorInput.addEventListener("focus",e=>e.target.select());
 
-// ——— Datas utilitárias
 function todayISO(){
   const now=new Date();
   const y=now.getFullYear();
@@ -142,25 +140,21 @@ function clampDay(y,m,day){const last=new Date(y,m+1,0).getDate();return Math.mi
 function formatBRDate(d){return d.toLocaleDateString("pt-BR",{timeZone:"America/Sao_Paulo"})}
 function monthClamped(y,m,day){return new Date(y,m,clampDay(y,m,day));}
 
-// ——— NOVO: garante que a próxima cobrança NUNCA seja antes da data base
 function computeNextChargeDate(baseDateISO,diaAtual,diaNovo,mode){
   if(!(diaAtual>=1&&diaAtual<=31) || !(diaNovo>=1&&diaNovo<=31)) return "—";
   const base=parseISOToDate(baseDateISO);
   let y=base.getFullYear(), m=base.getMonth();
 
-  // Mantém sua regra original para escolher o mês alvo
   let targetMonth;
   if(mode==="proxima"){
     targetMonth = (diaNovo>diaAtual)? m : m+1;
-  }else{ // "mesSeguinte"
+  }else{ 
     targetMonth = (diaNovo>diaAtual)? m+1 : m+2;
   }
 
-  // Cria a data candidata
   let cand = monthClamped(y, targetMonth, diaNovo);
   cand.setHours(0,0,0,0);
 
-  // Se a candidata ficou ANTES da base, pula meses até ficar >= base
   while(cand < base){
     targetMonth += 1;
     cand = monthClamped(y, targetMonth, diaNovo);
@@ -252,7 +246,6 @@ function enforceTodayMin(){
   updateNextDate();
 }
 
-// ——— Listeners
 ["diaAtual","diaNovo"].forEach(id=>document.getElementById(id).addEventListener("input",updateNextDate));
 document.getElementById("radioGroup").addEventListener("change",updateNextDate);
 document.getElementById("dataBase").addEventListener("change",enforceTodayMin);
@@ -275,7 +268,6 @@ document.getElementById("reset").addEventListener("click",()=>{
   enforceTodayMin();
 });
 
-// ——— Mantém a data base sempre ≥ hoje
 let lastDay=todayISO();
 function tickToday(){
   const t=todayISO();
@@ -286,7 +278,6 @@ function tickToday(){
 }
 setInterval(tickToday,60000);
 
-// Init
 show({permitido:false,status:"—",dias:"—",prorata:0,total:0,explain:""});
 enforceTodayMin();
 updateNextDate();
