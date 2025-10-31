@@ -26,7 +26,7 @@ input:focus,select:focus{outline:none;border-color:var(--roxo-ana-2);box-shadow:
 .mt-12{margin-top:12px}.mt-10{margin-top:10px}
 .small{font-size:12px;color:var(--muted)}
 .radio{display:flex;gap:12px;flex-wrap:wrap;margin-top:6px}
-.btn{padding:15px 14px;border-radius:10px;border:1px solid transparent;cursor:pointer;transition:transform .06s ease,filter .15s ease,box-shadow .15s ease, .15s ease,border-color .15s ease;user-select:none}
+.btn{padding:10px 14px;border-radius:10px;border:1px solid transparent;cursor:pointer;transition:transform .06s ease,filter .15s ease,box-shadow .15s ease, .15s ease,border-color .15s ease;user-select:none}
 .btn:active{transform:translateY(1px)}
 .btn-primary{background:linear-gradient(180deg,var(--brand),var(--roxo-ana-1));border-color:#5a38a6;color:white;box-shadow:0 6px 16px rgba(153,0,255,.25)}
 .btn-primary:hover{filter:brightness(1.03);box-shadow:0 8px 20px rgba(153,0,255,.35);background:linear-gradient(180deg,var(--brand-hover),var(--roxo-ana-1))}
@@ -94,7 +94,7 @@ pre{white-space:pre-wrap;line-height:1.35;margin:8px 0 0}
           • Aplicando só no mês seguinte, pode ter Pró-Rata.
         </div>
 
-       <div class="actions" style="padding: 10px, 0px;">
+        <div class="actions" style="padding:20px 0;">
   <button id="calc" class="btn btn-primary">Calcular</button>
   <button id="reset" class="btn btn-ghost">Limpar</button>
 </div>
@@ -119,6 +119,7 @@ const BRL=new Intl.NumberFormat("pt-BR",{style:"currency",currency:"BRL"});
 const fmt=v=>BRL.format(Math.max(0,Number(v||0)));
 const r2=v=>Math.round((Number(v)||0)*100)/100;
 
+// ——— Entrada de valor em R$ com máscara simples
 const valorInput=document.getElementById("valor");
 valorInput.addEventListener("input",e=>{
   let raw=e.target.value.replace(/\D/g,"");
@@ -128,6 +129,7 @@ valorInput.addEventListener("input",e=>{
 });
 valorInput.addEventListener("focus",e=>e.target.select());
 
+// ——— Datas utilitárias
 function todayISO(){
   const now=new Date();
   const y=now.getFullYear();
@@ -140,21 +142,25 @@ function clampDay(y,m,day){const last=new Date(y,m+1,0).getDate();return Math.mi
 function formatBRDate(d){return d.toLocaleDateString("pt-BR",{timeZone:"America/Sao_Paulo"})}
 function monthClamped(y,m,day){return new Date(y,m,clampDay(y,m,day));}
 
+// ——— NOVO: garante que a próxima cobrança NUNCA seja antes da data base
 function computeNextChargeDate(baseDateISO,diaAtual,diaNovo,mode){
   if(!(diaAtual>=1&&diaAtual<=31) || !(diaNovo>=1&&diaNovo<=31)) return "—";
   const base=parseISOToDate(baseDateISO);
   let y=base.getFullYear(), m=base.getMonth();
 
+  // Mantém sua regra original para escolher o mês alvo
   let targetMonth;
   if(mode==="proxima"){
     targetMonth = (diaNovo>diaAtual)? m : m+1;
-  }else{ 
+  }else{ // "mesSeguinte"
     targetMonth = (diaNovo>diaAtual)? m+1 : m+2;
   }
 
+  // Cria a data candidata
   let cand = monthClamped(y, targetMonth, diaNovo);
   cand.setHours(0,0,0,0);
 
+  // Se a candidata ficou ANTES da base, pula meses até ficar >= base
   while(cand < base){
     targetMonth += 1;
     cand = monthClamped(y, targetMonth, diaNovo);
@@ -246,6 +252,7 @@ function enforceTodayMin(){
   updateNextDate();
 }
 
+// ——— Listeners
 ["diaAtual","diaNovo"].forEach(id=>document.getElementById(id).addEventListener("input",updateNextDate));
 document.getElementById("radioGroup").addEventListener("change",updateNextDate);
 document.getElementById("dataBase").addEventListener("change",enforceTodayMin);
@@ -268,6 +275,7 @@ document.getElementById("reset").addEventListener("click",()=>{
   enforceTodayMin();
 });
 
+// ——— Mantém a data base sempre ≥ hoje
 let lastDay=todayISO();
 function tickToday(){
   const t=todayISO();
@@ -278,6 +286,7 @@ function tickToday(){
 }
 setInterval(tickToday,60000);
 
+// Init
 show({permitido:false,status:"—",dias:"—",prorata:0,total:0,explain:""});
 enforceTodayMin();
 updateNextDate();
