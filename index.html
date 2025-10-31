@@ -16,8 +16,8 @@ body{margin:0;font-family:system-ui,-apple-system,Segoe UI,Roboto,Ubuntu,Arial;b
 h1{margin:0 0 8px;font-size:28px}
 .sub{color:var(--muted);margin:0 6px 6px;font-size:16px}
 .info{color:var(--accent);font-size:14px;margin-bottom:18px}
-.next{display:inline-flex;gap:8px;align-items:center;justify-content:center;background:#1a1832;border:1px solid #2f2b4f;color:var(--text);padding:8px 12px;border-radius:999px;font-size:13px}
-.grid{display:grid;grid-template-columns:1fr 1fr;gap:16px;text-align:left}
+.next{display:inline-flex;gap:8px;align-items:center;justify-content:center;background:#1a1832;border:1px solid #2f2b4f;color:var(--text);padding:8px 12px;border-radius:999px;font-size:13px;margin:0 auto}
+.grid{display:grid;grid-template-columns:1fr 1fr;gap:16px;text-align:left;align-items:start}
 .card{background:var(--card);border:1px solid var(--bd);border-radius:14px;padding:16px}
 label{display:block;font-size:14px;color:var(--muted);margin-bottom:6px}
 input[type="text"],input[type="number"],input[type="date"],select{width:100%;padding:10px 12px;border-radius:10px;border:1px solid var(--bd);background:#101029;color:var(--text);transition:border-color .2s,box-shadow .2s}
@@ -37,7 +37,20 @@ summary:hover{text-decoration:underline;text-decoration-color:var(--ama-ana-1)}
 .kv{display:flex;justify-content:space-between;margin:6px 0}
 .ok{color:var(--ok)}.err{color:var(--err)}.muted{color:var(--muted)}
 pre{white-space:pre-wrap;line-height:1.35;margin:8px 0 0}
-@media(max-width:900px){.grid{grid-template-columns:1fr}}
+
+/* CENTRALIZAÇÃO E RESPIRO DOS BOTÕES */
+.actions{
+  display:flex;
+  justify-content:center;   /* centraliza horizontal */
+  align-items:center;       /* garante alinhamento vertical */
+  gap:10px;                 /* espaço entre botões */
+  padding:20px 0;           /* mais espaço acima/abaixo */
+}
+
+/* Responsivo */
+@media(max-width:900px){
+  .grid{grid-template-columns:1fr}
+}
 </style>
 </head>
 <body>
@@ -94,11 +107,11 @@ pre{white-space:pre-wrap;line-height:1.35;margin:8px 0 0}
           • Aplicando só no mês seguinte, pode ter Pró-Rata.
         </div>
 
-        <div class="actions" style="padding:20px 0;">
-  <button id="calc" class="btn btn-primary">Calcular</button>
-  <button id="reset" class="btn btn-ghost">Limpar</button>
-</div>
-
+        <div class="actions">
+          <button id="calc" class="btn btn-primary">Calcular</button>
+          <button id="reset" class="btn btn-ghost">Limpar</button>
+        </div>
+      </div>
 
       <div class="card">
         <h2>Resultado</h2>
@@ -119,7 +132,7 @@ const BRL=new Intl.NumberFormat("pt-BR",{style:"currency",currency:"BRL"});
 const fmt=v=>BRL.format(Math.max(0,Number(v||0)));
 const r2=v=>Math.round((Number(v)||0)*100)/100;
 
-// ——— Entrada de valor em R$ com máscara simples
+// máscara simples para R$
 const valorInput=document.getElementById("valor");
 valorInput.addEventListener("input",e=>{
   let raw=e.target.value.replace(/\D/g,"");
@@ -129,7 +142,7 @@ valorInput.addEventListener("input",e=>{
 });
 valorInput.addEventListener("focus",e=>e.target.select());
 
-// ——— Datas utilitárias
+// datas utilitárias
 function todayISO(){
   const now=new Date();
   const y=now.getFullYear();
@@ -142,13 +155,13 @@ function clampDay(y,m,day){const last=new Date(y,m+1,0).getDate();return Math.mi
 function formatBRDate(d){return d.toLocaleDateString("pt-BR",{timeZone:"America/Sao_Paulo"})}
 function monthClamped(y,m,day){return new Date(y,m,clampDay(y,m,day));}
 
-// ——— NOVO: garante que a próxima cobrança NUNCA seja antes da data base
+// garante que a próxima cobrança NUNCA seja antes da data base
 function computeNextChargeDate(baseDateISO,diaAtual,diaNovo,mode){
   if(!(diaAtual>=1&&diaAtual<=31) || !(diaNovo>=1&&diaNovo<=31)) return "—";
   const base=parseISOToDate(baseDateISO);
   let y=base.getFullYear(), m=base.getMonth();
 
-  // Mantém sua regra original para escolher o mês alvo
+  // regra original para escolher o mês alvo
   let targetMonth;
   if(mode==="proxima"){
     targetMonth = (diaNovo>diaAtual)? m : m+1;
@@ -156,11 +169,11 @@ function computeNextChargeDate(baseDateISO,diaAtual,diaNovo,mode){
     targetMonth = (diaNovo>diaAtual)? m+1 : m+2;
   }
 
-  // Cria a data candidata
+  // candidata
   let cand = monthClamped(y, targetMonth, diaNovo);
   cand.setHours(0,0,0,0);
 
-  // Se a candidata ficou ANTES da base, pula meses até ficar >= base
+  // se caiu antes da base, pula meses até >= base
   while(cand < base){
     targetMonth += 1;
     cand = monthClamped(y, targetMonth, diaNovo);
@@ -180,15 +193,15 @@ function calcularProrata({valor,diaAtual,diaNovo,parcelasAbertas,aplicacao}){
   const movimento=(diaNovo>diaAtual)?"postergar":(diaNovo<diaAtual?"adiantar":"igual");
   explic.push(`Movimento: ${movimento==="postergar"?"postergar (novo > atual)":movimento==="adiantar"?"adiantar (novo < atual)":"sem mudança"}.`);
 
-  let diasConsiderados=0;let cobra=false;
+  let diasConsiderados=0, cobra=false;
 
   if(movimento==="igual"){
     explic.push("Dia novo igual ao atual: 0 dia(s). Sem Pró-Rata.");
   }else if(movimento==="postergar"){
     diasConsiderados=diaNovo-diaAtual;
-    explic.push(`Diferença direta: ${diaNovo} - ${diaAtual} = ${diasConsiderados} dia(s).`);
-    if(diasConsiderados>=6){cobra=true;explic.push("Diferença ≥ 6 dias ⇒ cobrar Pró-Rata.");}
-    else{explic.push("Diferença < 6 dias ⇒ não cobrar Pró-Rata.");}
+    explic.push(`Diferença: ${diaNovo} - ${diaAtual} = ${diasConsiderados} dia(s).`);
+    cobra = diasConsiderados>=6;
+    explic.push(cobra?"Diferença ≥ 6 dias ⇒ cobrar Pró-Rata.":"Diferença < 6 dias ⇒ não cobrar Pró-Rata.");
   }else if(movimento==="adiantar"){
     if(aplicacao==="proxima"){
       explic.push("Aplicação na próxima ocorrência (mês seguinte imediato). Adiantamento ⇒ não cobra Pró-Rata.");
@@ -196,8 +209,8 @@ function calcularProrata({valor,diaAtual,diaNovo,parcelasAbertas,aplicacao}){
     }else{
       diasConsiderados=(30-diaAtual)+diaNovo;
       explic.push(`Aplicação no mês seguinte: (30 - ${diaAtual}) + ${diaNovo} = ${diasConsiderados}.`);
-      if(diasConsiderados>=6){cobra=true;explic.push("Diferença ≥ 6 dias ⇒ cobrar Pró-Rata.");}
-      else{explic.push("Diferença < 6 dias ⇒ não cobrar Pró-Rata.");}
+      cobra = diasConsiderados>=6;
+      explic.push(cobra?"Diferença ≥ 6 dias ⇒ cobrar Pró-Rata.":"Diferença < 6 dias ⇒ não cobrar Pró-Rata.");
     }
   }
 
@@ -222,7 +235,7 @@ function getVals(){
     diaAtual:Number(document.getElementById("diaAtual").value||0),
     diaNovo:Number(document.getElementById("diaNovo").value||0),
     parcelasAbertas:document.getElementById("parcelasAbertas").value,
-    aplicacao:[...document.querySelectorAll('input[name=\"aplicacao\"]')].find(r=>r.checked)?.value||"proxima"
+    aplicacao:[...document.querySelectorAll('input[name="aplicacao"]')].find(r=>r.checked)?.value||"proxima"
   };
 }
 
@@ -240,7 +253,7 @@ function updateNextDate(){
   const base=document.getElementById("dataBase").value||todayISO();
   const diaAtual=Number(document.getElementById("diaAtual").value||0);
   const diaNovo=Number(document.getElementById("diaNovo").value||0);
-  const modo=[...document.querySelectorAll('input[name=\"aplicacao\"]')].find(r=>r.checked)?.value||"proxima";
+  const modo=[...document.querySelectorAll('input[name="aplicacao"]')].find(r=>r.checked)?.value||"proxima";
   document.getElementById("nextDate").textContent=computeNextChargeDate(base,diaAtual,diaNovo,modo);
 }
 
@@ -252,7 +265,7 @@ function enforceTodayMin(){
   updateNextDate();
 }
 
-// ——— Listeners
+// listeners
 ["diaAtual","diaNovo"].forEach(id=>document.getElementById(id).addEventListener("input",updateNextDate));
 document.getElementById("radioGroup").addEventListener("change",updateNextDate);
 document.getElementById("dataBase").addEventListener("change",enforceTodayMin);
@@ -270,12 +283,12 @@ document.getElementById("reset").addEventListener("click",()=>{
   document.getElementById("valor").value="0,00";
   ["diaAtual","diaNovo"].forEach(id=>document.getElementById(id).value="");
   document.getElementById("parcelasAbertas").value="nao";
-  document.querySelector('input[name=\"aplicacao\"][value=\"proxima\"]').checked=true;
+  document.querySelector('input[name="aplicacao"][value="proxima"]').checked=true;
   show({permitido:false,status:"—",dias:"—",prorata:0,total:0,explain:""});
   enforceTodayMin();
 });
 
-// ——— Mantém a data base sempre ≥ hoje
+// mantém a data base sempre ≥ hoje
 let lastDay=todayISO();
 function tickToday(){
   const t=todayISO();
@@ -286,7 +299,7 @@ function tickToday(){
 }
 setInterval(tickToday,60000);
 
-// Init
+// init
 show({permitido:false,status:"—",dias:"—",prorata:0,total:0,explain:""});
 enforceTodayMin();
 updateNextDate();
