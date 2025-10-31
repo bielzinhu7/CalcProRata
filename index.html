@@ -20,13 +20,13 @@ h1{margin:0 0 8px;font-size:28px}
 .grid{display:grid;grid-template-columns:1fr 1fr;gap:16px;text-align:left}
 .card{background:var(--card);border:1px solid var(--bd);border-radius:14px;padding:16px}
 label{display:block;font-size:14px;color:var(--muted);margin-bottom:6px}
-input[type="text"],input[type="number"],select{width:100%;padding:10px 12px;border-radius:10px;border:1px solid var(--bd);background:#101029;color:var(--text);transition:border-color .2s,box-shadow .2s}
+input[type="text"],input[type="number"],input[type="date"],select{width:100%;padding:10px 12px;border-radius:10px;border:1px solid var(--bd);background:#101029;color:var(--text);transition:border-color .2s,box-shadow .2s}
 input:focus,select:focus{outline:none;border-color:var(--roxo-ana-2);box-shadow:0 0 0 3px rgba(153,0,255,.25)}
 .row{display:grid;grid-template-columns:1fr 1fr;gap:12px}
 .mt-12{margin-top:12px}.mt-10{margin-top:10px}
 .small{font-size:12px;color:var(--muted)}
 .radio{display:flex;gap:12px;flex-wrap:wrap;margin-top:6px}
-.btn{padding:10px 14px;border-radius:10px;border:1px solid transparent;cursor:pointer;transition:transform .06s ease,filter .15s ease,box-shadow .15s ease,background .15s ease,border-color .15s ease;user-select:none}
+.btn{padding:10px 14px;border-radius:10px;border:1px solid transparent;cursor:pointer;transition:transform .06s ease,filter .15s ease,box-shadow .15s ease, .15s ease,border-color .15s ease;user-select:none}
 .btn:active{transform:translateY(1px)}
 .btn-primary{background:linear-gradient(180deg,var(--brand),var(--roxo-ana-1));border-color:#5a38a6;color:white;box-shadow:0 6px 16px rgba(153,0,255,.25)}
 .btn-primary:hover{filter:brightness(1.03);box-shadow:0 8px 20px rgba(153,0,255,.35);background:linear-gradient(180deg,var(--brand-hover),var(--roxo-ana-1))}
@@ -55,16 +55,24 @@ pre{white-space:pre-wrap;line-height:1.35;margin:8px 0 0}
             <input id="valor" type="text" inputmode="numeric" placeholder="0,00" value="0,00" autocomplete="off">
           </div>
           <div>
-            <label for="diaAtual">Dia de vencimento atual</label>
-            <input id="diaAtual" type="number" min="1" max="31" placeholder="Ex.: 10">
+            <label for="dataBase">Data base</label>
+            <input id="dataBase" type="date">
+            <div class="small">A data base nunca pode ser anterior a hoje.</div>
           </div>
         </div>
 
         <div class="row mt-12">
           <div>
+            <label for="diaAtual">Dia de vencimento atual</label>
+            <input id="diaAtual" type="number" min="1" max="31" placeholder="Ex.: 10">
+          </div>
+          <div>
             <label for="diaNovo">Novo dia de vencimento</label>
             <input id="diaNovo" type="number" min="1" max="31" placeholder="Ex.: 22">
           </div>
+        </div>
+
+        <div class="row mt-12">
           <div>
             <label for="parcelasAbertas">Parcelas em aberto?</label>
             <select id="parcelasAbertas">
@@ -72,18 +80,18 @@ pre{white-space:pre-wrap;line-height:1.35;margin:8px 0 0}
               <option value="sim">Sim</option>
             </select>
           </div>
+          <div>
+            <label>Aplicar mudança a partir de</label>
+            <div class="radio" id="radioGroup">
+              <label><input type="radio" name="aplicacao" value="proxima" checked> Próxima ocorrência do novo dia</label>
+              <label><input type="radio" name="aplicacao" value="mesSeguinte"> Mês seguinte (pula um ciclo)</label>
+            </div>
+          </div>
         </div>
 
-        <div class="mt-12">
-          <label>Aplicar mudança a partir de</label>
-          <div class="radio" id="radioGroup">
-            <label><input type="radio" name="aplicacao" value="proxima" checked> Próxima ocorrência do novo dia</label>
-            <label><input type="radio" name="aplicacao" value="mesSeguinte"> Mês seguinte (pula um ciclo)</label>
-          </div>
-          <div class="small">
-            • Adiantamento (ex.: 25 → 10) aplicado na próxima ocorrência imediata não cobra Pró-Rata.<br>
-            • Se aplicar apenas no mês subsequente, pode haver Pró-Rata.
-          </div>
+        <div class="small">
+          • Adiantamento (ex.: 25 → 10) aplicado na próxima ocorrência imediata não cobra Pró-Rata.<br>
+          • Se aplicar apenas no mês subsequente, pode haver Pró-Rata.
         </div>
 
         <div class="actions">
@@ -121,16 +129,26 @@ valorInput.addEventListener("input",e=>{
 });
 valorInput.addEventListener("focus",e=>e.target.select());
 
+function todayISO(){
+  const now=new Date();
+  const y=now.getFullYear();
+  const m=String(now.getMonth()+1).padStart(2,"0");
+  const d=String(now.getDate()).padStart(2,"0");
+  return `${y}-${m}-${d}`;
+}
+function parseISOToDate(iso){const [y,m,d]=iso.split("-").map(Number);return new Date(y,m-1,d);}
 function clampDay(y,m,day){const last=new Date(y,m+1,0).getDate();return Math.min(day,last)}
 function formatBRDate(d){return d.toLocaleDateString("pt-BR",{timeZone:"America/Sao_Paulo"})}
-function computeNextChargeDate(diaAtual,diaNovo,mode){
+
+function computeNextChargeDate(baseDateISO,diaAtual,diaNovo,mode){
   if(!(diaAtual>=1&&diaAtual<=31)&&!(diaNovo>=1&&diaNovo<=31))return "—";
-  const now=new Date();let y=now.getFullYear();let m=now.getMonth();
+  const base=parseISOToDate(baseDateISO);
+  let y=base.getFullYear(), m=base.getMonth();
   let targetMonth;
   if(mode==="proxima"){targetMonth=(diaNovo>diaAtual)?m:m+1}
   else{targetMonth=(diaNovo>diaAtual)?m+1:m+2}
-  const d=new Date(y, targetMonth, clampDay(y,targetMonth,diaNovo));
-  return formatBRDate(d)
+  const d=new Date(y,targetMonth,clampDay(y,targetMonth,diaNovo));
+  return formatBRDate(d);
 }
 
 function calcularProrata({valor,diaAtual,diaNovo,parcelasAbertas,aplicacao}){
@@ -155,8 +173,15 @@ function calcularProrata({valor,diaAtual,diaNovo,parcelasAbertas,aplicacao}){
 
 function getVals(){
   const valorStr=document.getElementById("valor").value.replace(/\./g,"").replace(",",".");
-  return{valor:Number(valorStr||0),diaAtual:Number(document.getElementById("diaAtual").value||0),diaNovo:Number(document.getElementById("diaNovo").value||0),parcelasAbertas:document.getElementById("parcelasAbertas").value,aplicacao:[...document.querySelectorAll('input[name="aplicacao"]')].find(r=>r.checked)?.value||"proxima"};
+  return{
+    valor:Number(valorStr||0),
+    diaAtual:Number(document.getElementById("diaAtual").value||0),
+    diaNovo:Number(document.getElementById("diaNovo").value||0),
+    parcelasAbertas:document.getElementById("parcelasAbertas").value,
+    aplicacao:[...document.querySelectorAll('input[name="aplicacao"]')].find(r=>r.checked)?.value||"proxima"
+  };
 }
+
 function show(res){
   const statusEl=document.getElementById("status");
   statusEl.textContent=res.status;
@@ -168,14 +193,24 @@ function show(res){
 }
 
 function updateNextDate(){
+  const base=document.getElementById("dataBase").value||todayISO();
   const diaAtual=Number(document.getElementById("diaAtual").value||0);
   const diaNovo=Number(document.getElementById("diaNovo").value||0);
   const modo=[...document.querySelectorAll('input[name="aplicacao"]')].find(r=>r.checked)?.value||"proxima";
-  document.getElementById("nextDate").textContent=computeNextChargeDate(diaAtual,diaNovo,modo);
+  document.getElementById("nextDate").textContent=computeNextChargeDate(base,diaAtual,diaNovo,modo);
+}
+
+function enforceTodayMin(){
+  const input=document.getElementById("dataBase");
+  const today=todayISO();
+  input.min=today;
+  if(!input.value || input.value<today) input.value=today;
+  updateNextDate();
 }
 
 ["diaAtual","diaNovo"].forEach(id=>document.getElementById(id).addEventListener("input",updateNextDate));
 document.getElementById("radioGroup").addEventListener("change",updateNextDate);
+document.getElementById("dataBase").addEventListener("change",enforceTodayMin);
 
 document.getElementById("calc").addEventListener("click",()=>{
   const v=getVals();
@@ -192,10 +227,21 @@ document.getElementById("reset").addEventListener("click",()=>{
   document.getElementById("parcelasAbertas").value="nao";
   document.querySelector('input[name="aplicacao"][value="proxima"]').checked=true;
   show({permitido:false,status:"—",dias:"—",prorata:0,total:0,explain:""});
-  document.getElementById("nextDate").textContent="—";
+  enforceTodayMin();
 });
 
+let lastDay=todayISO();
+function tickToday(){
+  const t=todayISO();
+  if(t!==lastDay){
+    lastDay=t;
+    enforceTodayMin();
+  }
+}
+setInterval(tickToday,60000);
+
 show({permitido:false,status:"—",dias:"—",prorata:0,total:0,explain:""});
+enforceTodayMin();
 updateNextDate();
 </script>
 </body>
