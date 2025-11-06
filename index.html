@@ -68,20 +68,20 @@ pre{white-space:pre-wrap;line-height:1.35;margin:8px 0 0}
             <input id="valor" type="text" inputmode="numeric" placeholder="0,00" value="0,00" autocomplete="off">
           </div>
           <div>
-            <label for="dataBase">Data base</label>
-            <input id="dataBase" type="date">
-            <div class="small">A “data base” não pode ser antes de hoje.</div>
+            <label for="dataUltimo">Data do <strong>último vencimento</strong></label>
+            <input id="dataUltimo" type="date">
+            <div class="small">Ex.: se a última fatura venceu em 29/10, selecione 2025-10-29.</div>
           </div>
         </div>
 
         <div class="row mt-12">
           <div>
             <label for="diaAtual">Dia atual do vencimento</label>
-            <input id="diaAtual" type="number" min="1" max="31" placeholder="Ex.: 10">
+            <input id="diaAtual" type="number" min="1" max="31" placeholder="Ex.: 29">
           </div>
           <div>
             <label for="diaNovo">Novo dia de vencimento</label>
-            <input id="diaNovo" type="number" min="1" max="31" placeholder="Ex.: 22">
+            <input id="diaNovo" type="number" min="1" max="31" placeholder="Ex.: 6">
           </div>
         </div>
 
@@ -96,15 +96,15 @@ pre{white-space:pre-wrap;line-height:1.35;margin:8px 0 0}
           <div>
             <label>Quando aplicar</label>
             <div class="radio" id="radioGroup">
-              <label><input type="radio" name="aplicacao" value="proxima" checked> Próxima ocorrência do novo dia</label>
-              <label><input type="radio" name="aplicacao" value="mesSeguinte"> Mês seguinte (pula um ciclo)</label>
+              <label><input type="radio" name="aplicacao" value="proxima" checked> Logo em seguida (próxima ocorrência do novo dia)</label>
+              <label><input type="radio" name="aplicacao" value="mesSeguinte"> No próximo ciclo (pula um mês)</label>
             </div>
           </div>
         </div>
 
         <div class="small">
-          • Se adiantar (ex.: 25 → 10) e aplicar na próxima ocorrência, não cobra Pró-Rata.<br>
-          • Aplicando só no mês seguinte, pode ter Pró-Rata.
+          • Se <strong>adiantar</strong> (ex.: 29 → 6) e aplicar <em>logo em seguida</em>, não cobra Pró‑Rata.<br>
+          • Aplicando <em>no próximo ciclo</em>, pode haver Pró‑Rata se a diferença de dias for ≥ 6.
         </div>
 
         <div class="actions">
@@ -117,8 +117,8 @@ pre{white-space:pre-wrap;line-height:1.35;margin:8px 0 0}
         <h2>Resultado</h2>
         <div class="kv"><span>Status:</span><strong id="status" class="muted">—</strong></div>
         <div class="kv"><span>Dias considerados:</span><strong id="dias">—</strong></div>
-        <div class="kv"><span>Pró-Rata:</span><strong id="prorata">—</strong></div>
-        <div class="kv"><span>Total (mensalidade + Pró-Rata):</span><strong id="total">—</strong></div>
+        <div class="kv"><span>Pró‑Rata:</span><strong id="prorata">—</strong></div>
+        <div class="kv"><span>Total (mensalidade + Pró‑Rata):</span><strong id="total">—</strong></div>
         <details class="mt-10">
           <summary>Como calculamos</summary>
           <pre id="exp"></pre>
@@ -155,17 +155,17 @@ function clampDay(y,m,day){const last=new Date(y,m+1,0).getDate();return Math.mi
 function formatBRDate(d){return d.toLocaleDateString("pt-BR",{timeZone:"America/Sao_Paulo"})}
 function monthClamped(y,m,day){return new Date(y,m,clampDay(y,m,day));}
 
-// garante que a próxima cobrança NUNCA seja antes da data base
+// calcula a próxima cobrança com base no ÚLTIMO vencimento informado
 function computeNextChargeDate(baseDateISO,diaAtual,diaNovo,mode){
-  if(!(diaAtual>=1&&diaAtual<=31) || !(diaNovo>=1&&diaNovo<=31)) return "—";
-  const base=parseISOToDate(baseDateISO);
+  if(!(diaAtual>=1&&diaAtual<=31) || !(diaNovo>=1&&diaNovo<=31) || !baseDateISO) return "—";
+  const base=parseISOToDate(baseDateISO); // último vencimento
   let y=base.getFullYear(), m=base.getMonth();
 
-  // regra original para escolher o mês alvo
+  // escolha do mês alvo em relação ao último vencimento
   let targetMonth;
-  if(mode==="proxima"){
+  if(mode==="proxima"){ // logo em seguida
     targetMonth = (diaNovo>diaAtual)? m : m+1;
-  }else{ // "mesSeguinte"
+  }else{ // "mesSeguinte" — próximo ciclo
     targetMonth = (diaNovo>diaAtual)? m+1 : m+2;
   }
 
@@ -173,8 +173,8 @@ function computeNextChargeDate(baseDateISO,diaAtual,diaNovo,mode){
   let cand = monthClamped(y, targetMonth, diaNovo);
   cand.setHours(0,0,0,0);
 
-  // se caiu antes da base, pula meses até >= base
-  while(cand < base){
+  // garante que NUNCA seja anterior ao último vencimento
+  while(cand <= base){
     targetMonth += 1;
     cand = monthClamped(y, targetMonth, diaNovo);
     cand.setHours(0,0,0,0);
@@ -196,21 +196,21 @@ function calcularProrata({valor,diaAtual,diaNovo,parcelasAbertas,aplicacao}){
   let diasConsiderados=0, cobra=false;
 
   if(movimento==="igual"){
-    explic.push("Dia novo igual ao atual: 0 dia(s). Sem Pró-Rata.");
+    explic.push("Dia novo igual ao atual: 0 dia(s). Sem Pró‑Rata.");
   }else if(movimento==="postergar"){
     diasConsiderados=diaNovo-diaAtual;
     explic.push(`Diferença: ${diaNovo} - ${diaAtual} = ${diasConsiderados} dia(s).`);
     cobra = diasConsiderados>=6;
-    explic.push(cobra?"Diferença ≥ 6 dias ⇒ cobrar Pró-Rata.":"Diferença < 6 dias ⇒ não cobrar Pró-Rata.");
+    explic.push(cobra?"Diferença ≥ 6 dias ⇒ cobrar Pró‑Rata.":"Diferença < 6 dias ⇒ não cobrar Pró‑Rata.");
   }else if(movimento==="adiantar"){
     if(aplicacao==="proxima"){
-      explic.push("Aplicação na próxima ocorrência (mês seguinte imediato). Adiantamento ⇒ não cobra Pró-Rata.");
+      explic.push("Aplicação logo em seguida (mês imediatamente após o último vencimento). Adiantamento ⇒ não cobra Pró‑Rata.");
       diasConsiderados=0; cobra=false;
     }else{
-      diasConsiderados=(30-diaAtual)+diaNovo;
-      explic.push(`Aplicação no mês seguinte: (30 - ${diaAtual}) + ${diaNovo} = ${diasConsiderados}.`);
+      diasConsiderados=(30-diaAtual)+diaNovo; // critério interno usando mês comercial de 30 dias
+      explic.push(`Aplicação no próximo ciclo: (30 - ${diaAtual}) + ${diaNovo} = ${diasConsiderados}.`);
       cobra = diasConsiderados>=6;
-      explic.push(cobra?"Diferença ≥ 6 dias ⇒ cobrar Pró-Rata.":"Diferença < 6 dias ⇒ não cobrar Pró-Rata.");
+      explic.push(cobra?"Diferença ≥ 6 dias ⇒ cobrar Pró‑Rata.":"Diferença < 6 dias ⇒ não cobrar Pró‑Rata.");
     }
   }
 
@@ -221,8 +221,8 @@ function calcularProrata({valor,diaAtual,diaNovo,parcelasAbertas,aplicacao}){
     `Mensalidade: ${fmt(valor)}.`,
     `Base: valor ÷ 30 × dias = ${fmt(valor)} ÷ 30 × ${diasConsiderados} = ${fmt((valor/30)*diasConsiderados)}.`,
     `Arredondado para 2 casas.`,
-    `Pró-Rata: ${fmt(prorata)}.`,
-    `Total (mensalidade + Pró-Rata): ${fmt(total)}.`
+    `Pró‑Rata: ${fmt(prorata)}.`,
+    `Total (mensalidade + Pró‑Rata): ${fmt(total)}.`
   ].join("\n");
 
   return{permitido:true,status:"Permitido",dias:diasConsiderados,prorata,total,explain:(explic.join("\n")+"\n\n"+resumo).trim()};
@@ -250,27 +250,19 @@ function show(res){
 }
 
 function updateNextDate(){
-  const base=document.getElementById("dataBase").value||todayISO();
+  const base=document.getElementById("dataUltimo").value; // pode ser passado ou futuro
   const diaAtual=Number(document.getElementById("diaAtual").value||0);
   const diaNovo=Number(document.getElementById("diaNovo").value||0);
   const modo=[...document.querySelectorAll('input[name="aplicacao"]')].find(r=>r.checked)?.value||"proxima";
   document.getElementById("nextDate").textContent=computeNextChargeDate(base,diaAtual,diaNovo,modo);
 }
 
-function enforceTodayMin(){
-  const input=document.getElementById("dataBase");
-  const today=todayISO();
-  input.min=today;
-  if(!input.value || input.value<today) input.value=today;
-  updateNextDate();
-}
-
 // listeners
-["diaAtual","diaNovo"].forEach(id=>document.getElementById(id).addEventListener("input",updateNextDate));
+["diaAtual","diaNovo","dataUltimo"].forEach(id=>document.getElementById(id).addEventListener("input",updateNextDate));
 document.getElementById("radioGroup").addEventListener("change",updateNextDate);
-document.getElementById("dataBase").addEventListener("change",enforceTodayMin);
 
-document.getElementById("calc").addEventListener("click",()=>{
+// ações
+ document.getElementById("calc").addEventListener("click",()=>{
   const v=getVals();
   if(v.valor<=0){alert("Informe o valor da mensalidade.");return;}
   if(!(v.diaAtual>=1&&v.diaAtual<=31)){alert("Informe o dia atual (1 a 31).");return;}
@@ -279,30 +271,21 @@ document.getElementById("calc").addEventListener("click",()=>{
   show(res);
 });
 
-document.getElementById("reset").addEventListener("click",()=>{
+ document.getElementById("reset").addEventListener("click",()=>{
   document.getElementById("valor").value="0,00";
   ["diaAtual","diaNovo"].forEach(id=>document.getElementById(id).value="");
   document.getElementById("parcelasAbertas").value="nao";
   document.querySelector('input[name="aplicacao"][value="proxima"]').checked=true;
+  // mantém ou limpa a data do último vencimento? vamos limpar para evitar confusão
+  document.getElementById("dataUltimo").value="";
   show({permitido:false,status:"—",dias:"—",prorata:0,total:0,explain:""});
-  enforceTodayMin();
+  updateNextDate();
 });
 
-// mantém a data base sempre ≥ hoje
-let lastDay=todayISO();
-function tickToday(){
-  const t=todayISO();
-  if(t!==lastDay){
-    lastDay=t;
-    enforceTodayMin();
-  }
-}
-setInterval(tickToday,60000);
-
-// init
-show({permitido:false,status:"—",dias:"—",prorata:0,total:0,explain:""});
-enforceTodayMin();
+// init — sugere hoje como data padrão (pode ser alterada livremente)
+document.getElementById("dataUltimo").value=todayISO();
 updateNextDate();
+show({permitido:false,status:"—",dias:"—",prorata:0,total:0,explain:""});
 </script>
 </body>
 </html>
